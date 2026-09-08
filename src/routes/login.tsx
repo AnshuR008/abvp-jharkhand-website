@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,12 @@ async function withAuthTimeout<T>(request: Promise<T>): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(
-      () => reject(new Error("Supabase se response nahi aa raha. Internet ya Supabase Auth settings check kijiye.")),
+      () =>
+        reject(
+          new Error(
+            "Supabase se response nahi aa raha. Internet ya Supabase Auth settings check kijiye.",
+          ),
+        ),
       AUTH_REQUEST_TIMEOUT_MS,
     );
   });
@@ -46,8 +52,11 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [busy, setBusy] = useState(false);
+  const [formError, setFormError] = useState("");
   const [verificationPending, setVerificationPending] = useState(false);
   const [resendingVerification, setResendingVerification] = useState(false);
   const navigate = useNavigate();
@@ -55,6 +64,7 @@ function LoginPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
+    setFormError("");
     try {
       if (mode === "signup") {
         const normalizedEmail = email.trim().toLowerCase();
@@ -75,7 +85,9 @@ function LoginPage() {
         );
         if (error) {
           if (error.status === 401) {
-            throw new Error("Supabase API key invalid hai. Project ki Publishable key .env mein update kijiye.");
+            throw new Error(
+              "Supabase API key invalid hai. Project ki Publishable key .env mein update kijiye.",
+            );
           }
           throw error;
         }
@@ -104,8 +116,13 @@ function LoginPage() {
           if (error.message.toLowerCase().includes("email not confirmed")) {
             throw new Error("Pehle email inbox se verification link par click kijiye.");
           }
+          if (error.message.toLowerCase().includes("invalid login credentials")) {
+            throw new Error("Wrong password. Password dobara check kijiye.");
+          }
           if (error.status === 401) {
-            throw new Error("Supabase API key invalid hai. .env mein isi project ki Publishable key paste kijiye.");
+            throw new Error(
+              "Supabase API key invalid hai. .env mein isi project ki Publishable key paste kijiye.",
+            );
           }
           throw error;
         }
@@ -120,7 +137,9 @@ function LoginPage() {
         navigate({ to: hasAdminAccess ? "/admin" : "/admin/setup" });
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Sign in failed");
+      const message = err instanceof Error ? err.message : "Sign in failed";
+      setFormError(message);
+      toast.error(message);
     } finally {
       setBusy(false);
     }
@@ -140,7 +159,9 @@ function LoginPage() {
       if (error) throw error;
       toast.success("Verification email dobara bhej diya gaya hai.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Verification email nahi bheja ja saka.");
+      toast.error(
+        error instanceof Error ? error.message : "Verification email nahi bheja ja saka.",
+      );
     } finally {
       setResendingVerification(false);
     }
@@ -177,28 +198,56 @@ function LoginPage() {
           </div>
           <div>
             <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              required
-              minLength={mode === "signup" ? 8 : 6}
-              autoComplete={mode === "signup" ? "new-password" : "current-password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                required
+                minLength={mode === "signup" ? 8 : 6}
+                autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                onClick={() => setShowPassword((visible) => !visible)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
           {mode === "signup" ? (
             <div>
               <Label htmlFor="confirm-password">Confirm password</Label>
-              <Input
-                id="confirm-password"
-                type="password"
-                required
-                minLength={8}
-                autoComplete="new-password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
+              <div className="relative">
+                <Input
+                  id="confirm-password"
+                  type={showConfirmPassword ? "text" : "password"}
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  aria-label={
+                    showConfirmPassword ? "Hide confirm password" : "Show confirm password"
+                  }
+                  onClick={() => setShowConfirmPassword((visible) => !visible)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 Kam se kam 8 characters ka password rakhiye.
               </p>
@@ -209,9 +258,20 @@ function LoginPage() {
           </Button>
         </form>
 
+        {formError ? (
+          <p
+            role="alert"
+            className="mt-3 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+          >
+            {formError}
+          </p>
+        ) : null}
+
         {verificationPending ? (
           <div className="mt-4 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
-            <p>Email inbox check karke verification link par click kijiye, phir yahan sign in kijiye.</p>
+            <p>
+              Email inbox check karke verification link par click kijiye, phir yahan sign in kijiye.
+            </p>
             <Button
               type="button"
               variant="link"
@@ -229,6 +289,7 @@ function LoginPage() {
           onClick={() => {
             setMode(mode === "signin" ? "signup" : "signin");
             setConfirmPassword("");
+            setFormError("");
             setVerificationPending(false);
           }}
           className="mt-4 w-full text-center text-sm text-muted-foreground hover:text-primary"

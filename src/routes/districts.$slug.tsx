@@ -159,7 +159,7 @@ function DistrictDetailPage() {
             <SectionHeading eyebrow="Ikai" title="Campus Units" />
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {units.data!.map((u) => (
-                <div key={u.id} className="rounded-lg border bg-[#FFF4E8] p-5 shadow-card">
+                <div key={u.id} className="rounded-lg border bg-saffron-light/20 p-5 shadow-card">
                   <h3 className="font-display text-base font-semibold">{u.name}</h3>
                   <p className="mt-1 text-sm text-muted-foreground">{u.college_name}</p>
                   <p className="mt-3 text-xs text-muted-foreground">
